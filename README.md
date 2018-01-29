@@ -5,7 +5,7 @@ Written by Gustavo Palazolo.
 This project aims to assist in the analysis of malware using QuantLoader, extracting its main payload without the need to do it manually.
 
 ## Usage
-QL_Unpacker.exe -f "C:\<path>\ql_sample.exe"
+QL_Unpacker.exe -f "C:\ql_sample.exe"
 
 <img src="https://media.giphy.com/media/3o7WIIzHHbrLCikKGs/giphy.gif" title="QuantLoader Unpacker">
 
