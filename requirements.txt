@@ -1,0 +1,3 @@
+coloredlogs==9.0
+winappdbg==1.5
+pyinstaller==3.3.1
