@@ -2,7 +2,7 @@
 Written by Gustavo Palazolo.
 
 ## Purpose
-This project aims to assist in the analysis of malware using QuantLoader, extracting its main payload without the need to do it manually.
+This project aims to assist the analysis of QuantLoader malware, extracting its main payload without the need to do it manually.
 
 ## Usage
 QL_Unpacker.exe -f "C:\ql_sample.exe"
