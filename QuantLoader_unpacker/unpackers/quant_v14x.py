@@ -40,19 +40,10 @@ class QHandler(EventHandler):
             lpApplicationName, lpCommandLine, lpProcessAttributes, lpThreadAttributes, bInheritHandles, dwCreationFlags,
             lpEnvironment, lpCurrentDirectory, lpStartupInfo, lpProcessInformation)) = self.get_funcargs(event)
 
-        p = event.get_process()
-        t = event.get_thread()
-
-        pid = event.get_pid()
-        tid = event.get_tid()
-
-        szApplicationName = p.peek_string(lpApplicationName, fUnicode)
-        szCommandLine = p.peek_string(lpCommandLine, fUnicode)
-
-        d = event.debug
-        ProcessInformation = self.guarded_read(d, t, lpProcessInformation, 16)
-
-        # Extract the various fields from the ProcessInformation structure
+        current_process = event.get_process()
+        szApplicationName = current_process.peek_string(lpApplicationName, fUnicode)
+        szCommandLine = current_process.peek_string(lpCommandLine, fUnicode)
+        ProcessInformation = self.guarded_read(event.get_thread(), lpProcessInformation, 16)
 
         hProcess = struct.unpack("<L", ProcessInformation[0:4])[0]
         hThread = struct.unpack("<L", ProcessInformation[4:8])[0]
@@ -63,21 +54,16 @@ class QHandler(EventHandler):
         proc_id = dwProcessId
 
         logging.info("[*] <%d:%d> 0x%x: CreateProcess(\"%s\",\"%s\",0x%x): %d (0x%x, 0x%x, <%d:%d>)" % (
-            pid, tid, ra, szApplicationName, szCommandLine, dwCreationFlags, retval, hProcess, hThread, dwProcessId,
-            dwThreadId))
+            event.get_pid(), event.get_tid(), ra, szApplicationName, szCommandLine, dwCreationFlags, retval,
+            hProcess, hThread, dwProcessId, dwThreadId))
 
     def post_VirtualAllocEx(self, event, retval):
         try:
-
             (ra, (hProcess, lpAddress, dwSize, flAllocationType, flProtect)) = self.get_funcargs(event)
-            d = event.debug
-            pid = event.get_pid()
-            tid = event.get_tid()
 
             logging.info("[*] <%d:%d> 0x%x: VirtualAllocEx(0x%x,0x%x (%d),0x%x,0x%03x) = 0x%x" % (
-                pid, tid, ra, lpAddress, dwSize, dwSize, flAllocationType, flProtect, retval))
+                event.get_pid(), event.get_tid(), ra, lpAddress, dwSize, dwSize, flAllocationType, flProtect, retval))
 
-            pass
         except Exception as e:
             logging.warning('There was an error: {}'.format(repr(e)))
 
@@ -85,19 +71,17 @@ class QHandler(EventHandler):
 
         (ra, (hProcess, lpBaseAddress, lpBuffer, nSize, lpNumberOfBytesWritten)) = self.get_funcargs(event)
 
-        pid = event.get_pid()
-        tid = event.get_tid()
-
         logging.info("[*] <%d:%d> 0x%x: WriteProcessMemory(0x%x,0x%x,0x%x,0x%x,0x%x): %d" % (
-            pid, tid, ra, hProcess, lpBaseAddress, lpBuffer, nSize, lpNumberOfBytesWritten, retval))
+            event.get_pid(), event.get_tid(), ra, hProcess, lpBaseAddress, lpBuffer, nSize,
+            lpNumberOfBytesWritten, retval))
 
         self.extract_quant_payload(event.get_process(), lpBuffer)
 
-    def guarded_read(self, d, t, addr, size):
+    def guarded_read(self, thread, address, size):
         data = None
         if size > 0:
-            p = t.get_process()
-            data = p.read(addr, size)
+            p = thread.get_process()
+            data = p.read(address, size)
         return data
 
     def extract_quant_payload(self, process, memory_buffer):
@@ -114,10 +98,7 @@ class QHandler(EventHandler):
 
     @staticmethod
     def get_funcargs(event):
-        h = event.hook
-        t = event.get_thread()
-        tid = event.get_tid()
-        return t.get_pc(), h.get_params(tid)
+        return event.get_thread().get_pc(), event.hook.get_params(event.get_tid())
 
     @staticmethod
     def kill_processes(current_process):

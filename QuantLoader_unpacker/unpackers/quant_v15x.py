@@ -12,6 +12,9 @@ level_styles = {'info': {'color': 'green'},
 logging.basicConfig(level=logging.INFO)
 coloredlogs.install(level='DEBUG', fmt='  %(message)s', level_styles=level_styles)
 
+QL_BUFFER = 4194304
+QL_SIZE = 69632
+
 
 class QHandler(EventHandler):
     apiHooks = {
@@ -21,22 +24,11 @@ class QHandler(EventHandler):
         ],
     }
 
-    @staticmethod
-    def get_funcargs(event):
-        h = event.hook
-        t = event.get_thread()
-        tid = event.get_tid()
-
-        return t.get_pc(), h.get_params(tid)
-
     def post_VirtualAlloc(self, event, retval):
         try:
             (ra, (lpAddress, dwSize, flAllocationType, flProtect)) = self.get_funcargs(event)
-            pid = event.get_pid()
-            tid = event.get_tid()
-
             logging.info("[*] <%d:%d> 0x%x: VirtualAlloc(0x%x,0x%x (%d),0x%x,0x%03x) = 0x%x" % (
-                pid, tid, ra, lpAddress, dwSize, dwSize, flAllocationType, flProtect, retval))
+                event.get_pid(), event.get_tid(), ra, lpAddress, dwSize, dwSize, flAllocationType, flProtect, retval))
         except Exception as e:
             logging.warning('There was an error: {}'.format(repr(e)))
 
@@ -46,23 +38,20 @@ class QHandler(EventHandler):
         process.kill()
 
     def extract_quant_payload(self, process):
-
         logging.info('Trying to extract the payload')
         payload_path = os.path.join(os.environ['USERPROFILE'], 'Desktop', 'ql_15_payload.bin')
-        for mbi in process.get_memory_map():
 
-            # Address and size of memory block.
-            ba = mbi.BaseAddress
-            rs = mbi.RegionSize
+        with open(payload_path, "wb") as f:
+            f.write(process.read(QL_BUFFER, QL_SIZE))
+            logging.critical('##### PAYLOAD EXTRACTED >> "{}" ##### '.format(payload_path))
 
-            if ba == 4194304 and rs == 69632:
-                with open(payload_path, "wb") as f:
-                    f.write(process.read(ba, rs))
-                    logging.critical('##### PAYLOAD EXTRACTED >> "{}" ##### '.format(payload_path))
-                return True
+        if not os.path.isfile(payload_path):
+            logging.info('We had a problem saving the file')
+            return False
 
-        logging.info('We did not found the payload')
-        return False
+    @staticmethod
+    def get_funcargs(event):
+        return event.get_thread().get_pc(), event.hook.get_params(event.get_tid())
 
 
 def extract_payload(file_path):
