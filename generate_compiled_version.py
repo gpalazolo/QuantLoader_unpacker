@@ -20,7 +20,7 @@ shutil.rmtree('build', ignore_errors=True)
 shutil.copy(os.path.join('dist', '{}.exe'.format(python_file_name)), '{}.exe'.format(compiled_name))
 shutil.rmtree('dist', ignore_errors=True)
 
-# Creates the files to add OleVbaAnalyzer on file context menu (right click).
+# Creates the entry to add the file on context menu (right click).
 with open(reg_path, 'w') as f:
     f.write('Windows Registry Editor Version 5.00\n'
             '[HKEY_LOCAL_MACHINE\SOFTWARE\Classes\*\shell\Extract Payload from QuantLoader]\n'
